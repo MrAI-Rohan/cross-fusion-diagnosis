@@ -5,10 +5,10 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 from torchmetrics.classification import BinaryStatScores
 
-from model import build_model
-from loss_function import BCEDiceLoss
-from optimizer_factory import build_optimizer
-from scheduler_factory import build_scheduler
+from models.segmentation_model import build_model
+from training.loss_function import get_loss_function
+from training.optimizer_factory import build_optimizer
+from training.scheduler_factory import build_scheduler
 from utils import compute_metrics, convert_numerics
 
 class SegmentationModule(pl.LightningModule):
@@ -22,7 +22,7 @@ class SegmentationModule(pl.LightningModule):
         # Build model
         self.model = build_model(config)
 
-        self.loss_fn = BCEDiceLoss()
+        self.loss_fn = get_loss_function(config)
 
         self.train_stats = BinaryStatScores(threshold=0.5)
         self.val_stats = BinaryStatScores(threshold=0.5)
