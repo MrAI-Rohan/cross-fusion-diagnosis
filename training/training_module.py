@@ -6,7 +6,7 @@ import pytorch_lightning as pl
 from torchmetrics.classification import BinaryStatScores
 
 from models.segmentation_model import build_model
-from training.loss_function import get_loss_function
+from training.loss_function import BCEDiceLoss
 from training.optimizer_factory import build_optimizer
 from training.scheduler_factory import build_scheduler
 from utils import compute_metrics, convert_numerics
@@ -22,7 +22,7 @@ class SegmentationModule(pl.LightningModule):
         # Build model
         self.model = build_model(config)
 
-        self.loss_fn = get_loss_function(config)
+        self.loss_fn = BCEDiceLoss()
 
         self.train_stats = BinaryStatScores(threshold=0.5)
         self.val_stats = BinaryStatScores(threshold=0.5)
@@ -31,11 +31,6 @@ class SegmentationModule(pl.LightningModule):
         return self.model(x, decoder_precision=decoder_precision, cfenet_precision=cfenet_precision)
 
     def training_step(self, batch, batch_idx):
-
-        # if batch_idx < 2:
-        #     imgs, masks, *_ = batch
-        #     print(f"TRAIN batch {batch_idx} | img mean: {imgs.mean():.6f} std: {imgs.std():.6f} | mask sum: {masks.sum():.0f}")        
-
         images, masks, _, _, _ = batch
 
         decoder_fp32 = "fp32" if self.config["training"].get("decoder_force_fp32", False) else None
@@ -57,22 +52,9 @@ class SegmentationModule(pl.LightningModule):
         self.log("train_loss_dice", loss["dice_loss"], on_step=True, on_epoch=True, prog_bar=True)
         self.log("train_loss_total", loss["total_loss"], on_step=True, on_epoch=True, prog_bar=True)
 
-        # print(loss)
-
-        # if batch_idx % 15 == 0:
-        #     print(f"step {batch_idx}: {torch.cuda.memory_allocated()/1e9:.2f} GB allocated, "
-        #         f"{torch.cuda.max_memory_allocated()/1e9:.2f} GB peak")
-
         return loss["total_loss"]
 
     def validation_step(self, batch, batch_idx):
-
-        # if batch_idx < 2:
-        #     imgs, masks, *_ = batch
-        #     with torch.no_grad():
-        #         preds = torch.sigmoid(self(imgs))
-            # print(f"VAL batch {batch_idx} | img mean: {imgs.mean():.6f} std: {imgs.std():.6f} | mask sum: {masks.sum():.0f} | pred mean: {preds.mean():.6f}")
-
         images, masks, _, _, _ = batch
 
         # Validation in FP16.

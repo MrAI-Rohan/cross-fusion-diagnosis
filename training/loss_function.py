@@ -35,8 +35,12 @@ class BCEDiceLoss(nn.Module):
             "dice_loss": dice_loss,
             "total_loss": bce_loss + dice_loss
         }
-    
+
 def get_loss_function(config):
+    """Unused function as BCEDiceLoss is hardcoded in training_module.py.
+        Additionally, using only dice won't work anyway as its outputs are not what training_module.py expects.
+        Nonetheless, this function is kept in case out experiments lead to a different loss function being used in the future.
+    """
     if config["loss"]["name"] == "bce_dice":
         return BCEDiceLoss()
     elif config["loss"]["name"] == "dice":

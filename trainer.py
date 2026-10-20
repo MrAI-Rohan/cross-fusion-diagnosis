@@ -7,7 +7,7 @@ from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
 from utils import convert_numerics
-from training_module import SegmentationModule
+from training.training_module import SegmentationModule
 from data.datamodule import BuildingDataModule
 
 def load_config(path):
