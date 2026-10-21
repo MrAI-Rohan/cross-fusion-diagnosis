@@ -11,6 +11,7 @@ from training.optimizer_factory import build_optimizer
 from training.scheduler_factory import build_scheduler
 from utils import compute_metrics, convert_numerics, find_nonfinite_state, NonFiniteModelError
 
+# One line to be removed later for proper commit.
 
 class SegmentationModule(pl.LightningModule):
     def __init__(self, config):
@@ -128,12 +129,16 @@ class SegmentationModule(pl.LightningModule):
         self.epoch_start_time = time.time()
         self.skipped_steps = 0
         self._prev_scale = None
+
+        # LRs used during this epoch; the scheduler steps before on_train_epoch_end
+        self.epoch_lrs = [float(g["lr"]) for g in self.optimizers().param_groups]
+
         print(f"\nEpoch {self.current_epoch + 1} started")
 
     def on_train_epoch_end(self):
         epoch_time = time.time() - self.epoch_start_time
-        encoder_lr = float(self.optimizers().param_groups[0]["lr"])
-        decoder_lr = float(self.optimizers().param_groups[1]["lr"])
+        encoder_lr = self.epoch_lrs[0]
+        decoder_lr = self.epoch_lrs[1]
 
         tp, fp, tn, fn, _ = self.train_stats.compute()
 
@@ -149,8 +154,8 @@ class SegmentationModule(pl.LightningModule):
         self.log("encoder_lr", encoder_lr)
         self.log("decoder_lr", decoder_lr)
 
-        if len(self.optimizers().param_groups) > 2:
-            cfenet_lr = float(self.optimizers().param_groups[2]["lr"])
+        if len(self.epoch_lrs) > 2:
+            cfenet_lr = self.epoch_lrs[2]
             self.log("cfenet_lr", cfenet_lr)
         
         # Log number of dismissed batches by scaler
@@ -165,7 +170,7 @@ class SegmentationModule(pl.LightningModule):
             f"| Train BIoU: {metrics['pos_iou']:.4f}"
             f"| Encoder LR: {encoder_lr:.2e}"
             f"| Decoder LR: {decoder_lr:.2e}")
-        if len(self.optimizers().param_groups) > 2:
+        if len(self.epoch_lrs) > 2:
             print(f"| CFENet LR: {cfenet_lr:.2e}")
 
     def on_validation_epoch_start(self):
