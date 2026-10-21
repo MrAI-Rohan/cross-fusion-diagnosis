@@ -42,22 +42,25 @@ class BuildingDataModule(pl.LightningDataModule):
         generator = torch.Generator()
         generator.manual_seed(self.config["seed"])
 
+        shuffle = self.data_cfg.get("shuffle", True)
         samples_per_epoch = self.data_cfg.get("samples_per_epoch", None)
-        if samples_per_epoch is not None and len(self.train_dataset) > samples_per_epoch:
-            sampler = RandomSampler(
-                self.train_dataset,
-                replacement=False,
-                num_samples=samples_per_epoch,
-                generator=generator
-            )
-            shuffle = False
+        n = len(self.train_dataset)
 
-            # print(list(iter(sampler))[:20])
-        elif samples_per_epoch is not None and len(self.train_dataset) < samples_per_epoch:
-            raise ValueError(f"Samples per epoch {samples_per_epoch} is greater than the dataset size {len(self.train_dataset)}, Case not handled.")
-        else:
-            sampler = None
-            shuffle = True
+        sampler = None
+        if samples_per_epoch is not None:
+            if samples_per_epoch > n:
+                raise ValueError(f"Samples per epoch {samples_per_epoch} is greater than the dataset size {n}, Case not handled.")
+            if samples_per_epoch < n:
+                if not shuffle:
+                    raise ValueError("data.samples_per_epoch is smaller than the training set, which needs "
+                                    "data.shuffle: true (the subset is drawn at random each epoch).")
+                sampler = RandomSampler(
+                    self.train_dataset,
+                    replacement=False,
+                    num_samples=samples_per_epoch,
+                    generator=generator
+                )
+                shuffle = False  # a sampler and shuffle=True cannot be combined
 
         return DataLoader(
             self.train_dataset,

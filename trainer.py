@@ -2,13 +2,15 @@ import os
 import yaml
 import shutil
 import argparse
+from pathlib import Path
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
 from utils import convert_numerics
-from training.training_module import SegmentationModule
 from data.datamodule import BuildingDataModule
+from training.training_module import SegmentationModule
+from config_checks import validate_config_name, find_duplicate_settings
 
 def load_config(path):
     with open(path, "r") as f:
@@ -37,10 +39,13 @@ def main(params=None):
 
     config = load_config(args.config)
 
+    configs_root = Path(__file__).resolve().parent / "configs"
+    validate_config_name(config, args.config, configs_root)
+    for dup in find_duplicate_settings(config, args.config, configs_root):
+        print(f"WARNING: identical settings to {dup}")
+
     experiment_name = config["experiment_name"]
     dataset_name = config["data"]["dataset"]
-
-    assert experiment_name.split("_")[1] in dataset_name, "Config and dataset mismatch"
 
     checkpoint_dir = os.path.join(args.checkpoint_dir, dataset_name, experiment_name)
     os.makedirs(checkpoint_dir, exist_ok=True)
@@ -108,7 +113,7 @@ def main(params=None):
         logger=wandb_logger,
         callbacks=callbacks,
         log_every_n_steps=10,
-        enable_progress_bar=config["training"]["progress_bar"],
+        enable_progress_bar=config["training"].get("progress_bar", False),
         gradient_clip_val=config["training"].get("gradient_clip_val", 1.0),
         deterministic="warn",
         num_sanity_val_steps=0,
@@ -119,6 +124,9 @@ def main(params=None):
 
     print(f"Stopped early: {trainer.should_stop}")
     print(f"Current epoch: {trainer.current_epoch}")
+    
+    if best_checkpoint.best_model_score is not None:
+        print(f"Best val_pos_iou: {float(best_checkpoint.best_model_score):.4f}")
 
 
 if __name__ == "__main__":

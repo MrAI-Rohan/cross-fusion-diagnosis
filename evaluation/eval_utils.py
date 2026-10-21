@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 
 from data.dataset import TiledDataset
 from data.transforms import build_transforms
-from training_module import SegmentationModule
+from training.training_module import SegmentationModule
 from evaluation.instance_eval import InstanceEvaluator, InstanceMetrics
 
 def load_data(h5_path, patch_size,  batch_size, indices=None, stride=None, transform=None, num_workers=2):

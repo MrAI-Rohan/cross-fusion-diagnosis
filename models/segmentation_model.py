@@ -52,6 +52,8 @@ class SegmentationModel(nn.Module):
         self.cfenet = CFENet(encoder_channels) if cfenet else None
         if self.cfenet:
             self.cfenet.register_forward_hook(check_hook)
+
+        self.decoder.register_forward_hook(check_hook)
     
     def forward(self, x, decoder_precision=None, cfenet_precision=None):
         features = self.encoder(x)

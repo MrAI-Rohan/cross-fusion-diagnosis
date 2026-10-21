@@ -1,3 +1,7 @@
+import torch
+from torch.nn.modules.batchnorm import _BatchNorm
+
+
 class FilterByBR:
     """Filter patches by ratio of no. of building pixels in them."""
     def __init__(self, building_threshold,):
@@ -42,3 +46,21 @@ def convert_numerics(obj):
                 return obj
         else:
             return obj
+
+class NonFiniteModelError(RuntimeError):
+    """Raised when BatchNorm buffers or parameters hold NaN/inf; the run can't recover."""
+
+
+def find_nonfinite_state(model):
+    """Names of BatchNorm running stats and parameters containing NaN/inf."""
+    bad = []
+    for name, module in model.named_modules():
+        if isinstance(module, _BatchNorm):
+            for buf_name in ("running_mean", "running_var"):
+                buf = getattr(module, buf_name)
+                if buf is not None and not torch.isfinite(buf).all():
+                    bad.append(f"{name}.{buf_name}")
+    for name, param in model.named_parameters():
+        if not torch.isfinite(param).all():
+            bad.append(name)
+    return bad

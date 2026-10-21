@@ -9,7 +9,8 @@ from models.segmentation_model import build_model
 from training.loss_function import BCEDiceLoss
 from training.optimizer_factory import build_optimizer
 from training.scheduler_factory import build_scheduler
-from utils import compute_metrics, convert_numerics
+from utils import compute_metrics, convert_numerics, find_nonfinite_state, NonFiniteModelError
+
 
 class SegmentationModule(pl.LightningModule):
     def __init__(self, config):
@@ -43,7 +44,7 @@ class SegmentationModule(pl.LightningModule):
         # So few bad loss values doesn't poison the whole curve
         if not torch.isfinite(loss["total_loss"]):
             print(f"Non-finite training loss at epoch {self.current_epoch}, batch {batch_idx}")
-            self.optimizers().zero_grad()
+            # self.optimizers().zero_grad()
             return None
 
         self.train_stats.update(torch.sigmoid(preds).detach(), masks.int())
@@ -67,13 +68,16 @@ class SegmentationModule(pl.LightningModule):
                 f"epoch={self.current_epoch} "
                 f"batch={batch_idx}"
             )
+            self.val_skipped_batches += 1
             return
         if not torch.isfinite(loss["total_loss"]):
+            # Turns out, loss can be non-finite even when predictions are finite.
             print(
                 f"Non-finite validation loss "
                 f"epoch={self.current_epoch} "
                 f"batch={batch_idx}"
             )
+            self.val_skipped_batches += 1
             return
 
         self.val_stats.update(torch.sigmoid(preds).detach(), masks.int())
@@ -164,6 +168,15 @@ class SegmentationModule(pl.LightningModule):
         if len(self.optimizers().param_groups) > 2:
             print(f"| CFENet LR: {cfenet_lr:.2e}")
 
+    def on_validation_epoch_start(self):
+        bad = find_nonfinite_state(self.model)
+        if bad:
+            raise NonFiniteModelError(
+                f"Non-finite model state before validation at epoch {self.current_epoch + 1}, "
+                f"step {self.global_step}: {bad[:10]}{' ...' if len(bad) > 10 else ''}"
+            )
+        self.val_skipped_batches = 0
+
     def on_validation_epoch_end(self):
         tp, fp, tn, fn, _ = self.val_stats.compute()
 
@@ -176,6 +189,8 @@ class SegmentationModule(pl.LightningModule):
         self.log("val_recall", metrics["recall"])
         self.log("val_f1", metrics["f1"])
         self.log("val_accuracy", metrics["accuracy"])
+
+        self.log("val_skipped_batches", float(self.val_skipped_batches))
 
         self.val_stats.reset()
 
@@ -234,4 +249,3 @@ class SegmentationModule(pl.LightningModule):
             )
 
         self.logger.experiment.log({"predictions": log_list, "epoch": self.current_epoch})
-
