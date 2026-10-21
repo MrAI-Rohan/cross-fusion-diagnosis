@@ -1,0 +1,60 @@
+# Sanity run, with CFENet: same recipe as the real runs, but 2 epochs of 1280 samples.
+# Validation still runs on the full validation set each epoch.
+
+experiment_name: unet_swint_whu_cfenet_s42_sanity
+seed: 42
+num_workers: 4
+tags: [sanity]
+
+model:
+  encoder: swin_t
+  timm_name: swin_tiny_patch4_window7_224.ms_in22k_ft_in1k
+  decoder: unet
+  cfenet: true
+  pretrained: true
+
+data:
+  dataset: whu
+  patch_size: 224
+  train_batch_size: 64
+  val_batch_size: 128
+  samples_per_epoch: 1280
+  train_transform:
+    hflip: 0.5
+    vflip: 0.5
+    rotate90: 0.5
+    brightness_contrast: 0.3
+    gauss_noise: 0.2
+    elastic: 0.2
+    grid_distortion: 0.2
+  shuffle: true
+
+training:
+  epochs: 2
+  encoder_lr: 6e-5
+  decoder_lr: 6e-4
+  cfenet_lr: 6e-4
+  progress_bar: false
+
+early_stopping:
+  monitor: val_pos_iou
+  patience: 15
+  mode: max
+
+optimizer:
+  name: adamw
+  params:
+    weight_decay: 0.01
+
+scheduler:
+  name: cosine_warmup
+  params:
+    warmup_epochs: 2
+    min_lr_ratio: 0.01
+
+checkpoint:
+  monitor: val_pos_iou
+  mode: max
+
+logging:
+  project: cross-fusion-diagnosis

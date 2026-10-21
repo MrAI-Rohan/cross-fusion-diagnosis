@@ -46,7 +46,7 @@ class SegmentationModel(nn.Module):
         self.encoder = encoder
         self.decoder = decoder
 
-        if not cfenet and encoder_channels is None:
+        if cfenet and encoder_channels is None:
             raise Exception("Pass the encoder_channels to use CFENet")
 
         self.cfenet = CFENet(encoder_channels) if cfenet else None
