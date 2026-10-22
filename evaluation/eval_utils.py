@@ -220,7 +220,7 @@ def make_predictions_and_count(loader, model, h5_path, patch_size, instance_h5_p
                         avg = full_pred / torch.clamp(count_map, min=1)
                         avg = avg[:orig_h, :orig_w]
 
-                        gt = torch.from_numpy(masks[current_img]).float()
+                        gt = (torch.from_numpy(masks[current_img]) > 0).float()
 
                         if save_dir is not None:
                             save_dir = Path(save_dir)
@@ -284,7 +284,7 @@ def make_predictions_and_count(loader, model, h5_path, patch_size, instance_h5_p
             avg = full_pred / torch.clamp(count_map, min=1)
             avg = avg[:orig_h, :orig_w]
 
-            gt = torch.from_numpy(masks[current_img]).float()
+            gt = (torch.from_numpy(masks[current_img]) > 0).float()
 
             if save_dir is not None:
                 save_dir = Path(save_dir)
