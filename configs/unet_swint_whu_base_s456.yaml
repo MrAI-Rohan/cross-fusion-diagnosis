@@ -2,7 +2,7 @@
 
 experiment_name: unet_swint_whu_base_s456
 seed: 456
-num_workers: 4
+num_workers: 1
 
 model:
   encoder: swin_t
@@ -15,7 +15,7 @@ data:
   dataset: whu
   patch_size: 224
   train_batch_size: 64
-  val_batch_size: 128
+  val_batch_size: 64
   samples_per_epoch: 10000
   train_transform:
     hflip: 0.5

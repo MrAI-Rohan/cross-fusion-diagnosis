@@ -1,0 +1,58 @@
+# UNet + Swin-T on WHU, with CFENet. Seed 42. CFENet-paper recipe.
+
+experiment_name: unet_swint_whu_cfenet_s42
+seed: 42
+num_workers: 1
+
+model:
+  encoder: swin_t
+  timm_name: swin_tiny_patch4_window7_224.ms_in22k_ft_in1k
+  decoder: unet
+  cfenet: true
+  pretrained: true
+
+data:
+  dataset: whu
+  patch_size: 224
+  train_batch_size: 64
+  val_batch_size: 64
+  samples_per_epoch: 10000
+  train_transform:
+    hflip: 0.5
+    vflip: 0.5
+    rotate90: 0.5
+    brightness_contrast: 0.3
+    gauss_noise: 0.2
+    elastic: 0.2
+    grid_distortion: 0.2
+  shuffle: true
+
+training:
+  epochs: 100
+  encoder_lr: 6e-5
+  decoder_lr: 6e-4
+  cfenet_lr: 6e-4
+  progress_bar: false
+
+early_stopping:
+  monitor: val_pos_iou
+  patience: 15
+  mode: max
+
+optimizer:
+  name: adamw
+  params:
+    weight_decay: 0.01
+
+scheduler:
+  name: cosine_warmup
+  params:
+    warmup_epochs: 5
+    min_lr_ratio: 0.01
+
+checkpoint:
+  monitor: val_pos_iou
+  mode: max
+
+logging:
+  project: cross-fusion-diagnosis
