@@ -64,33 +64,6 @@ def update_pr_auc_counts(pred_mask, gt_mask, thresholds, tp, fp, fn,):
         fp[i] += torch.sum(pred_binary & ~gt_flat)
         fn[i] += torch.sum(~pred_binary & gt_flat)
 
-def mask_to_boundary(mask, dilation_ratio = 0.02):
-    # Convert a binary torch mask to its boundary mask.
-
-    h, w = mask.shape
-    diag = (h * h + w * w) ** 0.5
-    d = max(1, int(round(dilation_ratio * diag)))
-
-    mask_np = mask.numpy().astype(np.uint8) * 255
-
-    # Using Chebyshev distance transform to find the boundary
-    dist = cv2.distanceTransform(
-        mask_np,
-        cv2.DIST_C,
-        cv2.DIST_MASK_PRECISE,
-    )
-
-    eroded = torch.from_numpy(dist > d)
-
-    return (mask > 0) & (~eroded) # Boundary
-
-def update_boundary_iou_counts(pred_mask, gt_mask, intersection, union,):
-    pred_boundary = mask_to_boundary(pred_mask)
-    gt_boundary = mask_to_boundary(gt_mask)
-    
-    intersection += torch.logical_and(pred_boundary, gt_boundary).sum()
-    union += torch.logical_or(pred_boundary, gt_boundary).sum()
-
 def get_gt_instance_meta(idx, h5_file,):
     mask = h5_file["mask_idx"][:]==idx
     labels = torch.from_numpy(h5_file["labels"][idx])
@@ -131,10 +104,6 @@ def make_predictions_and_count(loader, model, h5_path, patch_size, instance_h5_p
 
     # Pixel based counts
     tp = fp = fn = tn = 0
-
-    # Boundary IoU counts
-    intersection = torch.tensor(0, dtype=torch.int64)
-    union = torch.tensor(0, dtype=torch.int64)
 
     # Instance based counts
     instance_metrics05 = InstanceMetrics() # IoU threshold=0.5
@@ -236,10 +205,7 @@ def make_predictions_and_count(loader, model, h5_path, patch_size, instance_h5_p
                             fp += ((pred_mask == 1) & (gt == 0)).sum().item()
                             fn += ((pred_mask == 0) & (gt == 1)).sum().item()
                             tn += ((pred_mask == 0) & (gt == 0)).sum().item()
-                            
-                            # Update boundary IoU counts
-                            update_boundary_iou_counts(pred_mask, gt, intersection, union)
-                            
+
                             # Instance counts
                             gt_instance_meta = gt_instances[current_img]
                             pred_instance_meta = extract_instances(pred_mask)
@@ -300,9 +266,6 @@ def make_predictions_and_count(loader, model, h5_path, patch_size, instance_h5_p
                 fn += ((pred_mask == 0) & (gt == 1)).sum().item()
                 tn += ((pred_mask == 0) & (gt == 0)).sum().item()
 
-                # Update boundary IoU counts
-                update_boundary_iou_counts(pred_mask, gt, intersection, union)
-
                 # Instance counts
                 gt_instance_meta = gt_instances[current_img]
                 pred_instance_meta = extract_instances(pred_mask)
@@ -334,8 +297,6 @@ def make_predictions_and_count(loader, model, h5_path, patch_size, instance_h5_p
 
     results =  {
         "confusion_matrix": {"tp": tp, "fp": fp, "fn": fn, "tn": tn},
-        "boundary_counts": {"intersection": intersection.item(), "union": union.item(),
-                         "boundary_iou": (intersection/(union+1e-6)).item()},
         "instance_based": {
             "iou_0.5": instance_metrics05.get_metrics(),
             "iou_0.3": instance_metrics03.get_metrics(),
