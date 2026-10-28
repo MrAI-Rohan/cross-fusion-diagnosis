@@ -1,7 +1,6 @@
 import time
 import wandb
 import torch
-import torch.nn.functional as F
 import pytorch_lightning as pl
 from torchmetrics.classification import BinaryStatScores
 
@@ -11,7 +10,6 @@ from training.optimizer_factory import build_optimizer
 from training.scheduler_factory import build_scheduler
 from utils import compute_metrics, convert_numerics, find_nonfinite_state, NonFiniteModelError
 
-# One line to be removed later for proper commit.
 
 class SegmentationModule(pl.LightningModule):
     def __init__(self, config):

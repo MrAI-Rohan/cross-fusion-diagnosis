@@ -1,3 +1,4 @@
+import json
 import argparse
 import numpy as np
 from pathlib import Path
@@ -5,7 +6,10 @@ from types import SimpleNamespace
 
 from evaluation.eval_utils import make_predictions_and_count, load_model, load_data, build_eval_transform
 
-def store_pr_auc(config_name, thresholds, tp, fp, fn, dest_dir):
+def store_pr_auc(config_name, thresholds, tp, fp, fn, dest_dir, project_dir):
+    if "_last" in config_name or "_best" in config_name:
+        config_name = config_name.rsplit("_", 1)[0]
+
     # --- Move to CPU and convert to NumPy ---
     thresholds_np = thresholds.cpu().numpy()
     tp_np = tp.cpu().numpy()
@@ -54,6 +58,15 @@ def store_pr_auc(config_name, thresholds, tp, fp, fn, dest_dir):
     print(f"   PR-AUC: {pr_auc:.4f}")
     print(f"   Optimal threshold: {optimal_threshold:.3f} (F1={optimal_f1:.4f})")
 
+    opt_file = project_dir / "results" / f"optimal_thresholds.json"
+    with open(opt_file, "r") as f:
+        data = json.load(f)
+
+    data["optimal_thresholds"][config_name] = optimal_threshold
+
+    with open(opt_file, "w") as f:
+        json.dump(data, f, indent=4)
+
     return optimal_threshold
 
 
@@ -65,13 +78,15 @@ def main(params=None):
         parser.add_argument("--patch_size", type=int, required=True, help="Patch size for testing.")
         parser.add_argument("--batch_size", type=int, default=256, help="Batch size for testing.")
         parser.add_argument("--stride", type=int, default=None, help="Stride for testing.")
-        parser.add_argument("--dest_dir", type=str, required=True, help="Directory to save results npz file.")
+        parser.add_argument("--dest_dir", type=str, default=None, help="Directory to save results npz file.")
 
         args = parser.parse_args()
 
     else:
         # Convert dict into an object with attribute access
         args = SimpleNamespace(**params)
+
+    project_dir = Path(__file__).parent.parent
 
     model = load_model(args.ckpt_path)
     transform = build_eval_transform()
@@ -83,8 +98,15 @@ def main(params=None):
             stride=args.stride,
         )
     
-    dest_dir = Path(args.dest_dir)
-    dest_dir.mkdir(parents=True, exist_ok=True)
+    if args.dest_dir is not None:
+            dest_dir = Path(args.dest_dir)
+            dest_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        # Default to saving in the results directory relative to this script.
+        dest_dir = project_dir / "results/pr_auc"
+
+        # Massachusetts PR-AUC calculation not handled, WHU ones will be overwritten, need to create a separate directory for it.
+        # Subject to if Massachusetts will be included in the paper.
     
     pr_auc_metrics = make_predictions_and_count(loader=loader,
                                                 model=model,
@@ -94,7 +116,8 @@ def main(params=None):
     
     optimal_threshold = store_pr_auc(config_name=Path(args.ckpt_path).stem,
                                      dest_dir=dest_dir,
-                                     **pr_auc_metrics,)
+                                     project_dir=project_dir,
+                                     **pr_auc_metrics)
 
     return optimal_threshold
 

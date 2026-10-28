@@ -1,0 +1,4 @@
+{
+  "_comment": "Optimal thresholds for each model config will be automatically stored here and used from here, for evaluation.",
+  "optimal_thresholds": {}
+}
