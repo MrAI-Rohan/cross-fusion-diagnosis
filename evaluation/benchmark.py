@@ -53,7 +53,6 @@ def run_benchmark(model, h5_root, dataset_dict, patch_size, batch_size, stride, 
             counts["confusion_matrix"]["fn"],
             counts["confusion_matrix"]["tn"]
         )
-        results[name].update(counts["boundary_counts"])
         results[name]["threshold"] = threshold
 
         instance_results[name] = counts["instance_based"]
@@ -272,10 +271,7 @@ def main():
         )
         
         cf = {i: sum(inria_results[j][i] for j in inria_results) for i in ["tp", "fp", "fn", "tn"]}
-        b = {i: sum(inria_results[j][i] for j in inria_results) for i in ["intersection", "union"]}
-        b["boundary_iou"] = b["intersection"]/(b["union"]+1e-6)
         inria_results["overall"] = compute_metrics(**cf)
-        inria_results["overall"].update(b)
         inria_results["overall"]["threshold"] = threshold
 
         inria_instance_results["overall"] = aggregate_inria_instance_metrics(inria_instance_results)
