@@ -212,13 +212,12 @@ def main():
         # Run PR-AUC if no threshold found.
         if threshold is None:
             # Only WHU training in this paper.
-            if "whu" in config_name:
-                val_h5_path = "whu_val.h5"
-
-            assert val_h5_path == f"whu_val.h5", "Config name does not match the expected naming template. \
-                See {project_dir}/config_checks.py"
-
-            val_h5_path = h5_path / val_h5_path 
+            if "whu" not in config_name:
+                raise ValueError(f"Cannot choose a validation file for '{config_name}': the name does not contain 'whu'. "
+                                 f"Pass --threshold, or see {project_dir}/config_checks.py for the naming template.")
+            
+            val_h5_path = h5_path / "whu_val_main.h5"
+ 
 
             threshold = pr_auc.main(
                 {

@@ -31,7 +31,7 @@ def store_pr_auc(config_name, thresholds, tp, fp, fn, dest_dir, project_dir):
 
     # --- Optimal threshold (max F1) ---
     opt_idx = np.argmax(f1_scores)
-    optimal_threshold = thresholds_np[opt_idx]
+    optimal_threshold = float(thresholds_np[opt_idx])   # plain float: np.float32 is not JSON serializable
     optimal_precision = precision[opt_idx]
     optimal_recall = recall[opt_idx]
     optimal_f1 = f1_scores[opt_idx]
@@ -54,7 +54,7 @@ def store_pr_auc(config_name, thresholds, tp, fp, fn, dest_dir, project_dir):
 
     # --- Save to .npz ---
     np.savez(dest_dir/f"pr_auc_{config_name}.npz", **save_dict)
-    print(f"✅ PR-AUC data saved to pr_auc_{config_name}.npz")
+    print(f" PR-AUC data saved to pr_auc_{config_name}.npz")
     print(f"   PR-AUC: {pr_auc:.4f}")
     print(f"   Optimal threshold: {optimal_threshold:.3f} (F1={optimal_f1:.4f})")
 
@@ -64,8 +64,7 @@ def store_pr_auc(config_name, thresholds, tp, fp, fn, dest_dir, project_dir):
 
     data["optimal_thresholds"][config_name] = optimal_threshold
 
-    with open(opt_file, "w") as f:
-        json.dump(data, f, indent=4)
+    opt_file.write_text(json.dumps(data, indent=4))
 
     return optimal_threshold
 
@@ -88,6 +87,11 @@ def main(params=None):
 
     project_dir = Path(__file__).parent.parent
 
+    # benchmark.py calls main() with a dict that has no dest_dir key, so read it defensively.
+    dest_dir_arg = getattr(args, "dest_dir", None)
+    dest_dir = Path(dest_dir_arg) if dest_dir_arg is not None else project_dir / "results" / "pr_auc"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
     model = load_model(args.ckpt_path)
     transform = build_eval_transform()
     loader = load_data(
@@ -98,15 +102,8 @@ def main(params=None):
             stride=args.stride,
         )
     
-    if args.dest_dir is not None:
-            dest_dir = Path(args.dest_dir)
-            dest_dir.mkdir(parents=True, exist_ok=True)
-    else:
-        # Default to saving in the results directory relative to this script.
-        dest_dir = project_dir / "results/pr_auc"
-
-        # Massachusetts PR-AUC calculation not handled, WHU ones will be overwritten, need to create a separate directory for it.
-        # Subject to if Massachusetts will be included in the paper.
+    # Massachusetts PR-AUC calculation not handled, WHU ones will be overwritten, need to create a separate directory for it.
+    # Subject to if Massachusetts will be included in the paper.
     
     pr_auc_metrics = make_predictions_and_count(loader=loader,
                                                 model=model,

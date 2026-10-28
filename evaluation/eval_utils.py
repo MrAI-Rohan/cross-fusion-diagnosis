@@ -14,7 +14,7 @@ from data.transforms import build_transforms
 from training.training_module import SegmentationModule
 from evaluation.instance_eval import InstanceEvaluator, InstanceMetrics
 
-def load_data(h5_path, patch_size,  batch_size, indices=None, stride=None, transform=None, num_workers=2):
+def load_data(h5_path, patch_size,  batch_size, indices=None, stride=None, transform=None, num_workers=1):
     dataset = TiledDataset(h5_path, patch_size=patch_size, transform=transform,
                             use_cache=True, stride=stride, indices=indices)
     dataloader = DataLoader(dataset, batch_size=batch_size,
