@@ -58,7 +58,7 @@ def store_pr_auc(config_name, thresholds, tp, fp, fn, dest_dir, project_dir):
     print(f"   PR-AUC: {pr_auc:.4f}")
     print(f"   Optimal threshold: {optimal_threshold:.3f} (F1={optimal_f1:.4f})")
 
-    opt_file = project_dir / "results" / f"optimal_thresholds.json"
+    opt_file = project_dir / "results" / "optimal_thresholds.json"
     with open(opt_file, "r") as f:
         data = json.load(f)
 

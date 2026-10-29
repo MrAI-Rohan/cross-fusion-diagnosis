@@ -144,7 +144,7 @@ def make_predictions_and_count(loader, model, h5_path, patch_size, instance_h5_p
             if instance_list is None:
                 with h5py.File(instance_h5_path, 'r') as instance_f:
                     assert len(masks) == instance_f["labels"].shape[0], (
-                            f"{len(masks)} doesn't match {instance_f["labels"].shape[0]}"
+                            f"{len(masks)} doesn't match {instance_f['labels'].shape[0]}"
                     )
                     gt_instances = [get_gt_instance_meta(i, instance_f) for i in range(len(masks))]
             elif instance_list is not None:
