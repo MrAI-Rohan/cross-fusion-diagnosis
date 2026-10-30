@@ -64,6 +64,15 @@ def update_pr_auc_counts(pred_mask, gt_mask, thresholds, tp, fp, fn,):
         fp[i] += torch.sum(pred_binary & ~gt_flat)
         fn[i] += torch.sum(~pred_binary & gt_flat)
 
+
+def make_pr_thresholds():
+    """The 0.01 grid plus extra points in both tails and one threshold above 1 that no pixel can pass, so the
+    curve is measured from recall 1 (threshold 0) down to recall 0 (threshold 1.01)."""
+    grid = torch.linspace(0, 1, 101)
+    tails = torch.tensor([0.0001, 0.001, 0.005, 0.995, 0.999, 0.9999, 1.01])
+    return torch.unique(torch.cat([grid, tails]))      # sorted ascending, duplicates removed
+
+
 def get_gt_instance_meta(idx, h5_file,):
     mask = h5_file["mask_idx"][:]==idx
     labels = torch.from_numpy(h5_file["labels"][idx])
@@ -111,10 +120,10 @@ def make_predictions_and_count(loader, model, h5_path, patch_size, instance_h5_p
 
 
     if compute_pr_auc:
-        thresholds = torch.linspace(0, 1, 101)
-        tp_auc = torch.zeros(101, dtype=torch.int64)
-        fp_auc = torch.zeros(101, dtype=torch.int64)
-        fn_auc = torch.zeros(101, dtype=torch.int64)
+        thresholds = make_pr_thresholds()
+        tp_auc = torch.zeros(len(thresholds), dtype=torch.int64)
+        fp_auc = torch.zeros(len(thresholds), dtype=torch.int64)
+        fn_auc = torch.zeros(len(thresholds), dtype=torch.int64)
 
     if compute_cka:
         cka_keys = []

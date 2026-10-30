@@ -4,6 +4,7 @@ import numpy as np
 from pathlib import Path
 from types import SimpleNamespace
 
+from evaluation.pr_curve import precision_recall, pr_auc_from_counts
 from evaluation.eval_utils import make_predictions_and_count, load_model, load_data, build_eval_transform
 
 def store_pr_auc(config_name, thresholds, tp, fp, fn, dest_dir, project_dir=None):
@@ -18,16 +19,11 @@ def store_pr_auc(config_name, thresholds, tp, fp, fn, dest_dir, project_dir=None
 
     # --- Compute Precision, Recall, F1 ---
     eps = 1e-10
-    precision = tp_np / (tp_np + fp_np + eps)
-    recall = tp_np / (tp_np + fn_np + eps)
+    precision, recall = precision_recall(tp_np, fp_np, fn_np)   # precision is 1 where nothing is predicted positive
     f1_scores = 2 * (precision * recall) / (precision + recall + eps)
 
-    # --- Compute PR-AUC (sorted by recall) ---
-    order = np.argsort(recall)
-    recall_sorted, idx = np.unique(recall[order], return_index=True)
-    precision_sorted = precision[order][idx]
-
-    pr_auc = np.trapezoid(precision_sorted, recall_sorted)
+    # --- Compute PR-AUC: anchored at recall 0 and walked from the highest threshold down ---
+    pr_auc = pr_auc_from_counts(thresholds_np, tp_np, fp_np, fn_np)
 
     # --- Optimal threshold (max F1) ---
     opt_idx = np.argmax(f1_scores)
