@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 from evaluation.eval_utils import make_predictions_and_count, load_model, load_data, build_eval_transform
 
-def store_pr_auc(config_name, thresholds, tp, fp, fn, dest_dir, project_dir):
+def store_pr_auc(config_name, thresholds, tp, fp, fn, dest_dir, project_dir=None):
     if "_last" in config_name or "_best" in config_name:
         config_name = config_name.rsplit("_", 1)[0]
 
@@ -58,13 +58,12 @@ def store_pr_auc(config_name, thresholds, tp, fp, fn, dest_dir, project_dir):
     print(f"   PR-AUC: {pr_auc:.4f}")
     print(f"   Optimal threshold: {optimal_threshold:.3f} (F1={optimal_f1:.4f})")
 
-    opt_file = project_dir / "results" / "optimal_thresholds.json"
-    with open(opt_file, "r") as f:
-        data = json.load(f)
-
-    data["optimal_thresholds"][config_name] = optimal_threshold
-
-    opt_file.write_text(json.dumps(data, indent=4))
+    # Only the validation-set PR-AUC run by benchmark.py (which passes project_dir) updates the stored thresholds.
+    if project_dir is not None:
+        opt_file = project_dir / "results" / "optimal_thresholds.json"
+        data = json.loads(opt_file.read_text())
+        data["optimal_thresholds"][config_name] = optimal_threshold
+        opt_file.write_text(json.dumps(data, indent=4))
 
     return optimal_threshold
 
