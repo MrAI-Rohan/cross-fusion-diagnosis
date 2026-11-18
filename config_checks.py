@@ -31,6 +31,9 @@ ENCODERS = {
 # Keys that do not change what an experiment does; ignored when looking for duplicate settings.
 IGNORED_FOR_DUPLICATES = {"experiment_name", "tags", "num_workers", "platform", "logging"}
 
+# Seeds this study is allowed to use, fixed in advance. A config with any other seed is rejected.
+ALLOWED_SEEDS = (42, 123, 456, 27, 12)
+
 
 def _yaml_files(root):
     root = Path(root)
@@ -99,6 +102,9 @@ def validate_config_name(config, config_path, configs_root="configs"):
     )
     if not seed_ok:
         problems.append(f"name says seed {parts['seed']} but seed is {config.get('seed')!r}.")
+    elif int(seed) not in ALLOWED_SEEDS:
+        problems.append(f"seed {int(seed)} is not in the allowed list {list(ALLOWED_SEEDS)}; "
+                        f"add it to ALLOWED_SEEDS in config_checks.py if it is intended.")
 
     # --- file names must be unique across all folders (compares names only, opens nothing) ---
     # Compared case-insensitively because Windows and macOS treat 'A.yaml' and 'a.yaml' as one file.
